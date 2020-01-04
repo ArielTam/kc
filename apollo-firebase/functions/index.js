@@ -5,8 +5,8 @@ const functions = require("firebase-functions");
 const express = require("express");
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: process.env.DATABASE_URL
+   credential: admin.credential.cert(serviceAccount),
+   databaseURL: process.env.DATABASE_URL
 });
 
 const { ApolloServer, gql } = require("apollo-server-express");
@@ -20,19 +20,19 @@ const typeDefs = gql`
   type Recipe {
      id: ID,
      name: String,
-     ingredientList: [ID],
+     ingredients: [String],
   }
 
   type Query {
-     getRecipes: [Recipe],
-     getIngredients: [Ingredient],
+     recipes: [Recipe],
+     ingredients: [Ingredient],
   }
 
 `;
 
 const resolvers = {
    Query: {
-      getRecipes(root, args) {
+      recipes: (root, args) => {
          return admin
             .database()
             .ref("recipes")
@@ -40,7 +40,7 @@ const resolvers = {
             .then(snapshot => snapshot.val())
             .then(val => Object.keys(val).map(key => val[key]))
       },  
-      getIngredients(root, args) {
+      ingredients: (root, args) => {
          return admin
             .database()
             .ref("ingredients")
