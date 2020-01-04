@@ -8,7 +8,7 @@ const RECIPES_QUERY = gql`
    getRecipes{
       name
       id
-      ingredientList
+      ingredients
    }
 
    getIngredients{
@@ -20,30 +20,32 @@ const RECIPES_QUERY = gql`
 
 class RecipeList extends Component {
    
-   findRecipeIDsFromIngredientList = (allIngredients, targetIngredients) => {
-      let refRecipeIDs = new Set()
-      for (let i in allIngredients){
-         let ingr = allIngredients[i]
-         if (targetIngredients.includes(ingr.name)) {
-            let current = new Set(ingr.usedIn)
-            refRecipeIDs = new Set([...refRecipeIDs, ...current])
+   // ingredients: list of Ingredients
+   // recipes: list of Recipes
+   // searched: list of ingredient strings from the search query
+   //
+   // Returns list of Recipes
+   filterRecipesByIngredients = (ingredients, recipes, searched) => {
+      let recipeIDs = new Set()
+      for (let i in ingredients){
+         const ingredient = ingredients[i]
+         if (searched.includes(ingredient.name)) {
+            const current = new Set(ingredient.usedIn)
+            recipeIDs = new Set([...recipeIDs, ...current])
          }
       }
-      return refRecipeIDs
-   }
-
-   findRecipesFromIDList = (recipeIDs, allRecipes) => {
-      let refRecipes = []
-      for (let i in allRecipes) {
-         let recipe = allRecipes[i]
+      
+      let filtered = []
+      for (let i in recipes) {
+         const recipe = recipes[i]
          if (recipeIDs.has(recipe.id)) {
-            refRecipes.push(recipe)
+            filtered.push(recipe)
          }
       }
-      return refRecipes
+      return filtered
    } 
 
-   getTargets = () => {
+   getSearchResult = () => {
       let params = new URLSearchParams(document.location.search.substring(1))
       let q = params.get("q")
       return q ? q.split("%2C") : []
@@ -61,10 +63,8 @@ class RecipeList extends Component {
 
                const recipes = data.getRecipes
                const ingredients = data.getIngredients
-               const targets = this.getTargets()
-
-               let ids = this.findRecipeIDsFromIngredientList(ingredients, targets)
-               let filteredRecipes = this.findRecipesFromIDList(ids, recipes)
+               const searched = this.getSearchResult()
+               const filteredRecipes = this.filterRecipesByIngredients(ingredients, recipes, searched)
 
                return (
                   <div>
@@ -72,22 +72,9 @@ class RecipeList extends Component {
                      <div>
                      {filteredRecipes.map(r => 
                         <Recipe 
-                           key={r.id+"filtered"} 
-                           id={r.id} 
-                           name={r.name} 
-                           ingredientList={r.ingredientList}
-                           target={targets}
-                        />)}
-                     </div>
-                     <br/>
-                     <h2>all</h2>
-                     <div>
-                     {recipes.map(r => 
-                        <Recipe 
-                           key={r.id} 
-                           id={r.id} 
-                           name={r.name} 
-                           ingredientList={r.ingredientList}
+                           key={r.id+"filtered"}
+                           recipe={r}
+                           searched={searched}
                         />)}
                      </div>
                   </div>
@@ -97,5 +84,4 @@ class RecipeList extends Component {
       )
    }
 }
-
 export default RecipeList
