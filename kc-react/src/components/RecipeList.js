@@ -1,87 +1,77 @@
 import React, { Component } from 'react'
 import Recipe from './Recipe'
-import { Query } from 'react-apollo'
 import gql from 'graphql-tag'
+import { useQuery } from '@apollo/react-hooks';
 
 const RECIPES_QUERY = gql`
 {
-   getRecipes{
+   recipes {
       name
       id
       ingredients
-   }
+    }
 
-   getIngredients{
+   ingredients {
       name
       usedIn
    }
 }
 `
+// ingredients: list of Ingredients
+// recipes: list of Recipes
+// searched: list of ingredient strings from the search query
+//
+// Returns list of Recipes
+const filterRecipesByIngredients = (ingredients, recipes, searched) => {
+  let recipeIDs = new Set()
+  for (let i in ingredients) {
+    const ingredient = ingredients[i]
+    if (searched.includes(ingredient.name)) {
+      const current = new Set(ingredient.usedIn)
+      recipeIDs = new Set([...recipeIDs, ...current])
+    }
+  }
 
-class RecipeList extends Component {
-   
-   // ingredients: list of Ingredients
-   // recipes: list of Recipes
-   // searched: list of ingredient strings from the search query
-   //
-   // Returns list of Recipes
-   filterRecipesByIngredients = (ingredients, recipes, searched) => {
-      let recipeIDs = new Set()
-      for (let i in ingredients){
-         const ingredient = ingredients[i]
-         if (searched.includes(ingredient.name)) {
-            const current = new Set(ingredient.usedIn)
-            recipeIDs = new Set([...recipeIDs, ...current])
-         }
-      }
-      
-      let filtered = []
-      for (let i in recipes) {
-         const recipe = recipes[i]
-         if (recipeIDs.has(recipe.id)) {
-            filtered.push(recipe)
-         }
-      }
-      return filtered
-   } 
-
-   getSearchResult = () => {
-      let params = new URLSearchParams(document.location.search.substring(1))
-      let q = params.get("q")
-      return q ? q.split("%2C") : []
-   }
-
-   render() {
-      return (
-         <Query query={RECIPES_QUERY}>
-            {({ loading, error, data }) => {
-               if (loading) return <div>Fetching</div>
-               if (error) {
-                  console.log(error)
-                  return <div>Error</div>
-               }
-
-               const recipes = data.getRecipes
-               const ingredients = data.getIngredients
-               const searched = this.getSearchResult()
-               const filteredRecipes = this.filterRecipesByIngredients(ingredients, recipes, searched)
-
-               return (
-                  <div>
-                     <h2>filtered</h2>
-                     <div>
-                     {filteredRecipes.map(r => 
-                        <Recipe 
-                           key={r.id+"filtered"}
-                           recipe={r}
-                           searched={searched}
-                        />)}
-                     </div>
-                  </div>
-               )
-            }}
-         </Query>
-      )
-   }
+  let filtered = []
+  for (let i in recipes) {
+    const recipe = recipes[i]
+    if (recipeIDs.has(recipe.id)) {
+      filtered.push(recipe)
+    }
+  }
+  return filtered
 }
+
+const getSearchResult = () => {
+  let params = new URLSearchParams(document.location.search.substring(1))
+  let q = params.get("q")
+  return q ? q.split("%2C") : []
+}
+
+const RecipeList = () => {
+  const { loading, data } = useQuery(RECIPES_QUERY);
+
+  if (!data || !data.recipes || !data.ingredients || data.loading) {
+    return <div>loading...</div>
+  }
+
+  const { recipes, ingredients } = data;
+  const searchResult = getSearchResult();
+  const filteredRecipes = filterRecipesByIngredients(ingredients, recipes, searchResult);
+
+  return (
+    <div>
+      <h2>Filtered</h2>
+      <div>
+        {filteredRecipes.map(recipe =>
+          <Recipe
+            key={recipe.id + "filtered"}
+            recipe={recipe}
+            searched={searchResult}
+          />)}
+      </div>
+    </div>
+  )
+}
+
 export default RecipeList
